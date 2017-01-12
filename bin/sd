@@ -63,6 +63,9 @@ while (args.length) {
     }
 }
 
+/**
+ * @returns {Object}
+ */
 function getConfig () {
     let config;
 
@@ -81,69 +84,84 @@ function getConfig () {
     return config;
 }
 
+/**
+ * @param {string} pathName
+ * @returns {Promise}
+ */
+function loadFile (pathName) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(pathName, 'utf-8', (err, content) => {
+            if (err) reject(err);
+            else resolve(content);
+        });
+    });
+}
+
+/**
+ * @param {string} pathName
+ * @param {string} newFileContent
+ * @returns {Promise}
+ */
+function saveFile (pathName, newFileContent) {
+    return new Promise((resolve, reject) => {
+        fs.writeFile(pathName, newFileContent, 'utf-8', (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+}
+
+/**
+ * @param {Object} config
+ * @returns {Promise}
+ */
 function saveConfig (config) {
     const jsoned = JSON.stringify(config, null, 4);
-    fs.writeFileSync('./destroy.config.json', jsoned, 'utf8');
+    return saveFile('./destroy.config.json', jsoned);
 }
 
 /**
  * @param {string} pathName
  * @param {string} blockName
  * @param {{ inlineReplacer: Function, blockReplacer?: Function }} replacers
- * @returns {Promise}
  */
-function replaceInFile (pathName, blockName, replacers) {
+function* replaceInFile (pathName, blockName, replacers) {
 
-    return new Promise((resolve, reject) => {
-        fs.readFile(pathName, 'utf-8', (err, content) => {
-            if (err) reject(err);
-            else resolve(content);
-        });
+    const originalFileContent = yield loadFile(pathName);
 
-    }).then((originalFileContent) => {
+    // comment all inline block instances
+    // see https://regexper.com/
+    let newFileContent = originalFileContent.replace(
+        new RegExp(`([^\\S\\n]*)(.*\\s*\\/\\/\\s*\\$\\$${blockName}.*\\n)`, 'gi'),
+        (allLineMatch, offset, restOfLine) => (
+            replacers.inlineReplacer(allLineMatch, offset, restOfLine)
+        )
+    );
 
-        // comment all inline block instances
-        // see https://regexper.com/
-        let newFileContent = originalFileContent.replace(
-            new RegExp(`([^\\S\\n]*)(.*\\s*\\/\\/\\s*\\$\\$${blockName}.*\\n)`, 'gi'),
-            (allLineMatch, offset, restOfLine) => (
-                replacers.inlineReplacer(allLineMatch, offset, restOfLine)
-            )
-        );
+    // comment lines in all block instances
+    // see https://regexper.com/ (replace double backslashes for single ones)
+    // todo replace spaces and new-lines before and after the block definition???
+    newFileContent = newFileContent.replace(
+        new RegExp(`(\\n?[^\\S\n]*/\\*\\*\\s*\\$\\$${blockName}\\s*\\*/)((.|\\n)*)(/\\*\\*\\s*\\$\\$${blockName} END\\s*\\*/)`, 'gi'),
+        (original, startComment, content, ignoreMe, endComment) => {
 
-        // comment lines in all block instances
-        // see https://regexper.com/ (replace double backslashes for single ones)
-        // todo replace spaces and new-lines before and after the block definition???
-        newFileContent = newFileContent.replace(
-            new RegExp(`(\\n?[^\\S\n]*/\\*\\*\\s*\\$\\$${blockName}\\s*\\*/)((.|\\n)*)(/\\*\\*\\s*\\$\\$${blockName} END\\s*\\*/)`, 'gi'),
-            (original, startComment, content, ignoreMe, endComment) => {
-
-                if (replacers.blockReplacer) {
-                    return replacers.blockReplacer(original);
-                }
-
-                const commentedContent = content.replace(
-                    /([^\S\n]*)([^\s\n]+)/gi,
-                    (allLineMatch, offset, restOfLine) => (
-                        replacers.inlineReplacer(allLineMatch, offset, restOfLine)
-                    )
-                );
-                return `${startComment}${commentedContent}${endComment}`;
-
+            if (replacers.blockReplacer) {
+                return replacers.blockReplacer(original);
             }
-        );
 
-        if (newFileContent === originalFileContent) {
-            return null;
+            const commentedContent = content.replace(
+                /([^\S\n]*)([^\s\n]+)/gi,
+                (allLineMatch, offset, restOfLine) =>
+                    replacers.inlineReplacer(allLineMatch, offset, restOfLine)
+            );
+
+            return `${startComment}${commentedContent}${endComment}`;
         }
+    );
 
-        return new Promise((resolve, reject) => {
-            fs.writeFile(pathName, newFileContent, 'utf-8', (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
-    });
+    if (newFileContent !== originalFileContent) {
+        yield saveFile(pathName, newFileContent);
+    }
 }
 
 /**
@@ -168,9 +186,9 @@ function* replaceBlockInstances (config, blockName, replacers) {
                 abort(err);
             }
 
-            const promises = filePaths.map(filePath => (
-                replaceInFile(filePath, blockName, replacers)
-            ));
+            const promises = filePaths.map(filePath =>
+                co.wrap(replaceInFile)(filePath, blockName, replacers)
+            );
 
             resolve(Promise.all(promises));
         });
@@ -222,7 +240,7 @@ const commands = {
             delete config.blocks[blockName];
         }
 
-        saveConfig(config);
+        yield saveConfig(config);
     },
 
     /**
@@ -258,7 +276,7 @@ const commands = {
         });
 
         config.blocks[blockName].removed = true;
-        saveConfig(config);
+        yield saveConfig(config);
 
         console.log(`The block "${blockName}" has been successfully destroyed.`);
         console.log('See the result and call "sd clean" to clean up the project if the result is ok.');
