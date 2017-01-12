@@ -1,0 +1,275 @@
+#!/usr/bin/env node
+
+'use strict';
+
+/**
+ * Module dependencies.
+ */
+
+const fs = require('fs');
+const glob = require('glob');
+const co = require('co');
+const path = require('path');
+const rimraf = require('rimraf');
+
+/**
+ * Option defaults.
+ */
+
+const options = { args: [] };
+
+/**
+ * Arguments.
+ */
+
+const args = process.argv.slice(2);
+
+/**
+ * Usage information.
+ */
+
+const help = `
+     Usage: sd [command]
+
+     Commands:
+
+        remove [blockName]  finds and comment all block instances in the project
+        clean               remove all commented blocks in the project
+`;
+
+// abort with a message
+function abort (msg) {
+    console.error('  %s', msg); // eslint-disable-line
+    process.exit(1);
+}
+
+// parse arguments
+
+let arg;
+while (args.length) {
+    arg = args.shift();
+    switch (arg) {
+        case '-h':
+        case '--help':
+        case 'help':
+            console.log(help); // eslint-disable-line
+            process.exit();
+            break;
+        default:
+            if (options.command) {
+                options.args.push(arg);
+            } else {
+                options.command = arg;
+            }
+    }
+}
+
+function getConfig () {
+    let config;
+
+    try {
+        config = fs.readFileSync('./destroy.config.json', 'utf-8');
+    } catch (err) {
+        abort('The destroy.config.json file has not been found');
+    }
+
+    try {
+        config = JSON.parse(config);
+    } catch (err) {
+        abort(`Error while parsing destroy.config.json: ${err.toString()}`);
+    }
+
+    return config;
+}
+
+function saveConfig (config) {
+    const jsoned = JSON.stringify(config, null, 4);
+    fs.writeFileSync('./destroy.config.json', jsoned, 'utf8');
+}
+
+/**
+ * @param {string} pathName
+ * @param {string} blockName
+ * @param {{ inlineReplacer: Function, blockReplacer?: Function }} replacers
+ * @returns {Promise}
+ */
+function replaceInFile (pathName, blockName, replacers) {
+
+    return new Promise((resolve, reject) => {
+        fs.readFile(pathName, 'utf-8', (err, content) => {
+            if (err) reject(err);
+            else resolve(content);
+        });
+
+    }).then((originalFileContent) => {
+
+        // comment all inline block instances
+        // see https://regexper.com/
+        let newFileContent = originalFileContent.replace(
+            new RegExp(`([^\\S\\n]*)(.*\\s*\\/\\/\\s*\\$\\$${blockName}.*\\n)`, 'gi'),
+            (allLineMatch, offset, restOfLine) => (
+                replacers.inlineReplacer(allLineMatch, offset, restOfLine)
+            )
+        );
+
+        // comment lines in all block instances
+        // see https://regexper.com/ (replace double backslashes for single ones)
+        // todo replace spaces and new-lines before and after the block definition???
+        newFileContent = newFileContent.replace(
+            new RegExp(`(\\n?[^\\S\n]*/\\*\\*\\s*\\$\\$${blockName}\\s*\\*/)((.|\\n)*)(/\\*\\*\\s*\\$\\$${blockName} END\\s*\\*/)`, 'gi'),
+            (original, startComment, content, ignoreMe, endComment) => {
+
+                if (replacers.blockReplacer) {
+                    return replacers.blockReplacer(original);
+                }
+
+                const commentedContent = content.replace(
+                    /([^\S\n]*)([^\s\n]+)/gi,
+                    (allLineMatch, offset, restOfLine) => (
+                        replacers.inlineReplacer(allLineMatch, offset, restOfLine)
+                    )
+                );
+                return `${startComment}${commentedContent}${endComment}`;
+
+            }
+        );
+
+        if (newFileContent === originalFileContent) {
+            return null;
+        }
+
+        return new Promise((resolve, reject) => {
+            fs.writeFile(pathName, newFileContent, 'utf-8', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    });
+}
+
+/**
+ * @param {Object} config
+ * @param {string} blockName
+ * @param {{inlineReplacer: Function, blockReplacer?: Function, fileReplacer: Function}} replacers
+ */
+function* replaceBlockInstances (config, blockName, replacers) {
+
+    const globOptions = {
+        dot: true,
+        ignore: config.ignore || [
+            'node_modules/**'
+        ]
+    };
+
+    // search all project
+    yield new Promise((resolve) => {
+        glob('**/*.+(js|jsx|scss|css|less)', globOptions, (err, filePaths) => {
+
+            if (err) {
+                abort(err);
+            }
+
+            const promises = filePaths.map(filePath => (
+                replaceInFile(filePath, blockName, replacers)
+            ));
+
+            resolve(Promise.all(promises));
+        });
+    });
+
+    // 'remove' all files mentioned in the 'paths'
+    const blockPaths = config.blocks[blockName].paths;
+    if (blockPaths) {
+        for (let i = blockPaths.length - 1; i >= 0; i--) {
+            const pathName = blockPaths[i];
+            const fullPath = `${process.cwd()}/${pathName}`;
+            const parsedPath = path.parse(fullPath);
+
+            // NOTE - this assumes that the fileReplacer is blocking function
+            replacers.fileReplacer(fullPath, parsedPath);
+        }
+    }
+
+}
+
+
+// commands
+const commands = {
+
+    * clean () {
+        // delete all removed blocks from the project
+        const config = getConfig();
+
+        const blockNames = Object.keys(config.blocks);
+
+        for (let i = 0; i < blockNames.length; i++) {
+            const blockName = blockNames[i];
+            const blockConfig = config.blocks[blockName];
+            if (!blockConfig.removed) {
+                continue;
+            }
+
+            yield* replaceBlockInstances(config, blockName, {
+                inlineReplacer: () => '',
+                blockReplacer: () => '',
+                fileReplacer: (fullPath, parsedPath) => {
+                    const fullPathToRemove = `${parsedPath.dir}/REMOVED_${parsedPath.base}`;
+                    if (fs.existsSync(fullPathToRemove)) {
+                        rimraf.sync(fullPathToRemove, { disableGlob: true });
+                    }
+                }
+            });
+
+            delete config.blocks[blockName];
+        }
+
+        saveConfig(config);
+    },
+
+    /**
+     * destroy 'blockName'
+     *
+     * @param {string} blockName
+     */
+    * destroy (blockName) {
+
+        const config = getConfig();
+        if (!(blockName in config.blocks)) {
+            abort(`The destroy.config.json does not contains block with name "${blockName}"`);
+        }
+
+        const dependingBlocks = Object.keys(config.blocks).filter((someOtherBlockName) => {
+            const blockConfig = config.blocks[someOtherBlockName];
+            return !blockConfig.removed
+                && blockConfig.dependencies
+                && blockConfig.dependencies.includes(blockName);
+        });
+
+        if (dependingBlocks.length) {
+            abort(`Cannot remove the "${blockName}" block. There are other blocks depending on it. \n Remove them first: ${dependingBlocks.join(', ')}`);
+        }
+
+        yield* replaceBlockInstances(config, blockName, {
+            inlineReplacer: (allLineMatch, indentation, restOfLine) => `${indentation}// ${restOfLine}`,
+            fileReplacer: (fullPath, parsedPath) => {
+                if (fs.existsSync(fullPath)) {
+                    fs.renameSync(fullPath, `${parsedPath.dir}/REMOVED_${parsedPath.base}`);
+                }
+            }
+        });
+
+        config.blocks[blockName].removed = true;
+        saveConfig(config);
+
+        console.log(`The block "${blockName}" has been successfully destroyed.`);
+        console.log('See the result and call "sd clean" to clean up the project if the result is ok.');
+    }
+
+};
+
+// invoke command
+const command = options.command;
+if (!(command in commands)) {
+    abort(`unknown command ${command}`);
+}
+co.wrap(commands[command]).apply(this, options.args);

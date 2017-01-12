@@ -1,0 +1,13 @@
+{
+    "blocks": {
+        "block2": {
+            "removed": false
+        },
+        "notUtilizedBlock": {
+            "dependencies": []
+        }
+    },
+    "ignore": [
+        "node_modules/**"
+    ]
+}

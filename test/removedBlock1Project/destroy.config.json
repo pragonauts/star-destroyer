@@ -1,0 +1,23 @@
+{
+    "blocks": {
+        "block1": {
+            "removed": true,
+            "paths": [
+                "directory/block1Directory",
+                "block1FileA.js"
+            ],
+            "dependencies": [
+                "block2"
+            ]
+        },
+        "block2": {
+            "removed": false
+        },
+        "notUtilizedBlock": {
+            "dependencies": []
+        }
+    },
+    "ignore": [
+        "node_modules/**"
+    ]
+}
