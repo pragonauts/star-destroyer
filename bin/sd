@@ -32,9 +32,8 @@ const help = `
      Usage: sd [command]
 
      Commands:
-
-        remove [blockName]  finds and comment all block instances in the project
-        clean               remove all commented blocks in the project
+        destroy [blockName]     finds and comment all block instances in the project
+        clean                   remove all commented blocks in the project
 `;
 
 // abort with a message
