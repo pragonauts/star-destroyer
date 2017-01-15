@@ -21,7 +21,9 @@ function readFsStructure (filename) {
 }
 
 
-describe.only('starDestroyer', function () {
+describe('starDestroyer', function () {
+
+    this.timeout(5000);
 
     const projectPath = `${__dirname}/mockProject`;
     let structureBefore;
@@ -33,7 +35,6 @@ describe.only('starDestroyer', function () {
         try {
             execFileSync('node', [`${__dirname}/../bin/sd`, ...args], {
                 cwd: projectPath
-                // , stdio: 'pipe'
             });
         } catch (err) {
             throw err;

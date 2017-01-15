@@ -11,6 +11,7 @@ const glob = require('glob');
 const co = require('co');
 const path = require('path');
 const rimraf = require('rimraf');
+const { execSync } = require('child_process');
 
 /**
  * Option defaults.
@@ -29,11 +30,11 @@ const args = process.argv.slice(2);
  */
 
 const help = `
-     Usage: sd [command]
+ Usage: sd [command]
 
-     Commands:
-        destroy [blockName]     finds and comment all block instances in the project
-        clean                   remove all commented blocks in the project
+ Commands:
+    destroy [blockName]     finds and comment all block instances in the project
+    clean                   remove all commented blocks in the project
 `;
 
 // abort with a message
@@ -121,6 +122,57 @@ function saveConfig (config) {
 }
 
 /**
+ * @param {Object} config
+ * @param {string[]} inBlockNames
+ * @returns {function(string): (boolean)}
+ */
+function getUnusedDependenciesFilter (config, inBlockNames) {
+    return dependency => inBlockNames.every((blockName) => {
+        const blockConfig = config.blocks[blockName];
+
+        const usedInDependencies = blockConfig.dependencies
+            && blockConfig.dependencies.includes(dependency);
+
+        const usedInDevDependencies = blockConfig.devDependencies
+            && blockConfig.devDependencies.includes(dependency);
+
+        return !usedInDependencies && !usedInDevDependencies;
+    });
+}
+
+/**
+ * @param {string[]} dependencies
+ * @param {string} savePostfix
+ */
+function callNpmUninstall (dependencies, savePostfix) {
+    execSync(`npm uninstall ${dependencies.join(' ')}${savePostfix}`);
+}
+
+function uninstallDependencies (config, blockName, save) {
+
+    const otherBlockNames = Object.keys(config.blocks)
+        .filter(name => name !== blockName && !config.blocks[name].removed);
+
+    const unusedDependencyFilter = getUnusedDependenciesFilter(config, otherBlockNames);
+
+    const blockConfig = config.blocks[blockName];
+
+    const dependenciesToRemove = (blockConfig.dependencies || [])
+        .filter(unusedDependencyFilter);
+
+    if (dependenciesToRemove.length) {
+        callNpmUninstall(dependenciesToRemove, save ? ' --save' : '');
+    }
+
+    const devDependenciesToRemove = (blockConfig.devDependencies || [])
+        .filter(unusedDependencyFilter);
+
+    if (devDependenciesToRemove.length) {
+        callNpmUninstall(devDependenciesToRemove, save ? ' --save-dev' : '');
+    }
+}
+
+/**
  * @param {string} pathName
  * @param {string} blockName
  * @param {{ inlineReplacer: Function, blockReplacer?: Function }} replacers
@@ -133,9 +185,8 @@ function* replaceInFile (pathName, blockName, replacers) {
     // see https://regexper.com/
     let newFileContent = originalFileContent.replace(
         new RegExp(`([^\\S\\n]*)(.*\\s*\\/\\/\\s*\\$\\$${blockName}.*\\n)`, 'gi'),
-        (allLineMatch, offset, restOfLine) => (
+        (allLineMatch, offset, restOfLine) =>
             replacers.inlineReplacer(allLineMatch, offset, restOfLine)
-        )
     );
 
     // comment lines in all block instances
@@ -237,6 +288,8 @@ const commands = {
                 }
             });
 
+            uninstallDependencies(config, blockName, true);
+
             delete config.blocks[blockName];
         }
 
@@ -258,8 +311,8 @@ const commands = {
         const dependingBlocks = Object.keys(config.blocks).filter((someOtherBlockName) => {
             const blockConfig = config.blocks[someOtherBlockName];
             return !blockConfig.removed
-                && blockConfig.dependencies
-                && blockConfig.dependencies.includes(blockName);
+                && blockConfig.blockDependencies
+                && blockConfig.blockDependencies.includes(blockName);
         });
 
         if (dependingBlocks.length) {
@@ -274,6 +327,8 @@ const commands = {
                 }
             }
         });
+
+        uninstallDependencies(config, blockName, false);
 
         config.blocks[blockName].removed = true;
         yield saveConfig(config);

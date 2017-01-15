@@ -6,15 +6,25 @@
                 "directory/block1Directory",
                 "block1FileA.js"
             ],
-            "dependencies": [
+            "blockDependencies": [
                 "block2"
+            ],
+            "dependencies": [
+                "smallest",
+                "greatest"
+            ],
+            "devDependencies": [
+                "individual"
             ]
         },
         "block2": {
-            "removed": false
+            "removed": false,
+            "dependencies": [
+                "greatest"
+            ]
         },
         "notUtilizedBlock": {
-            "dependencies": []
+            "blockDependencies": []
         }
     },
     "ignore": [
