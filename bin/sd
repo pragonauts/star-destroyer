@@ -193,7 +193,7 @@ function* replaceInFile (pathName, blockName, replacers) {
     // see https://regexper.com/ (replace double backslashes for single ones)
     // todo replace spaces and new-lines before and after the block definition???
     newFileContent = newFileContent.replace(
-        new RegExp(`(\\n?[^\\S\n]*/\\*\\*\\s*\\$\\$${blockName}\\s*\\*/)((.|\\n)*)(/\\*\\*\\s*\\$\\$${blockName} END\\s*\\*/)`, 'gi'),
+        new RegExp(`(\\n?[^\\S\\n]*/\\*\\*\\s*\\$\\$${blockName}\\s*\\*/)((.|\\n)*)(/\\*\\*\\s*\\$\\$${blockName} END\\s*\\*/)`, 'gi'),
         (original, startComment, content, ignoreMe, endComment) => {
 
             if (replacers.blockReplacer) {
@@ -201,7 +201,7 @@ function* replaceInFile (pathName, blockName, replacers) {
             }
 
             const commentedContent = content.replace(
-                /([^\S\n]*)([^\s\n]+)/gi,
+                /([^\S\n]*)([^\s\n][^\n]*)/gi,
                 (allLineMatch, offset, restOfLine) =>
                     replacers.inlineReplacer(allLineMatch, offset, restOfLine)
             );

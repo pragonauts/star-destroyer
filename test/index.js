@@ -21,7 +21,7 @@ function readFsStructure (filename) {
 }
 
 
-describe('starDestroyer', function () {
+describe.only('starDestroyer', function () {
 
     this.timeout(5000);
 

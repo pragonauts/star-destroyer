@@ -16,8 +16,14 @@ module.exports = function () {
     console.log('HAHAHAAA');
     console.log('HAHAHAAA');
 
+    let a = 10;
+
     console.log('HAHAHAAA');
     console.log('HAHAHAAA');
     /** $$BLOCK1 END */
 
+    console.log('Some codeeee');
+    console.log('Some codeeee');
+
+    console.log('Some codeeee2');
 };
