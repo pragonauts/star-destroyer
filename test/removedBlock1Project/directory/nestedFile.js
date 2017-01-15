@@ -3,6 +3,7 @@
 const fs = require('fs');
 
 // console.log('HAHAHAAA'); // $$BLOCK1
+// let a = 10;              // $$BLOCK1
 console.log('HAHAHAAA');
 
 if (null) {

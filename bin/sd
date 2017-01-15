@@ -184,7 +184,7 @@ function* replaceInFile (pathName, blockName, replacers) {
     // comment all inline block instances
     // see https://regexper.com/
     let newFileContent = originalFileContent.replace(
-        new RegExp(`([^\\S\\n]*)(.*\\s*\\/\\/\\s*\\$\\$${blockName}.*\\n)`, 'gi'),
+        new RegExp(`([^\\S\\n]*)(\\S+.*\\/\\/\\s*\\$\\$${blockName}.*\\n)`, 'gi'),
         (allLineMatch, offset, restOfLine) =>
             replacers.inlineReplacer(allLineMatch, offset, restOfLine)
     );
