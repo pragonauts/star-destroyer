@@ -98,6 +98,7 @@ describe('starDestroyer', function () {
              * - all block instances are commented in the project files
              * - all folders specified in config has 'REMOVED_' prefix
              * - all files   specified in config has 'REMOVED_' prefix
+             * - all dependencies of the block are removed if no other block needs them
              */
             callDestroyer('destroy', 'block1');
 
