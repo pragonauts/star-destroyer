@@ -26,5 +26,13 @@ module.exports = function () {
     console.log('Some codeeee');
     console.log('Some codeeee');
 
+    // $$BLOCK1 BEGIN
+    console.log('HAHAHAAA');
+    console.log('HAHAHAAA');
+
+    console.log('HAHAHAAA');
+    console.log('HAHAHAAA');
+    // $$BLOCK1 END
+
     console.log('Some codeeee2');
 };

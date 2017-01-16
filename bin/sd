@@ -192,9 +192,20 @@ function* replaceInFile (pathName, blockName, replacers) {
     // comment lines in all block instances
     // see https://regexper.com/ (replace double backslashes for single ones)
     // todo replace spaces and new-lines before and after the block definition???
+
+    const startCommentBlockMatcher = `/\\*\\*\\s*\\$\\$${blockName}\\s*\\*/`;
+    const startCommentInlineMatcher = `//\\s*\\$\\$${blockName}\\s+BEGIN.*\\n`;
+    const startCommentMatcher = `((${startCommentBlockMatcher})|(${startCommentInlineMatcher}))`;
+
+    const endCommentBlockMatcher = `/\\*\\*\\s*\\$\\$${blockName}\\s+END\\s*\\*/`;
+    const endCommentInlineMatcher = `//\\s*\\$\\$${blockName}\\s+END.*\\n`;
+    const endCommentMatcher = `((${endCommentBlockMatcher})|(${endCommentInlineMatcher}))`;
+
+    const pattern = `(\\n?[^\\S\\n]*)${startCommentMatcher}((.|\\n)*?)${endCommentMatcher}`;
+
     newFileContent = newFileContent.replace(
-        new RegExp(`(\\n?[^\\S\\n]*/\\*\\*\\s*\\$\\$${blockName}\\s*\\*/)((.|\\n)*)(/\\*\\*\\s*\\$\\$${blockName} END\\s*\\*/)`, 'gi'),
-        (original, startComment, content, ignoreMe, endComment) => {
+        new RegExp(pattern, 'gi'),
+        (original, startCommentOffset, startComment, c1, c2, content, ignoreMe, endComment) => {
 
             if (replacers.blockReplacer) {
                 return replacers.blockReplacer(original);
@@ -206,7 +217,7 @@ function* replaceInFile (pathName, blockName, replacers) {
                     replacers.inlineReplacer(allLineMatch, offset, restOfLine)
             );
 
-            return `${startComment}${commentedContent}${endComment}`;
+            return `${startCommentOffset}${startComment}${commentedContent}${endComment}`;
         }
     );
 
