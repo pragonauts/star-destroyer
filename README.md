@@ -49,7 +49,7 @@ The SD needs destoryer.config.json in the root of the project.
 
 ### `sd destroy [BLOCKNAME]`
 
-The command will remove all BLOCKNAME instances in the project. 
+The command will comment all BLOCKNAME instances in the project. 
 That means the SD will:
 
 1. iterate all blocks defined in the config and check if there are no other blocks depending to the block. 
