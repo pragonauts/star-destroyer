@@ -309,6 +309,9 @@ const commands = {
         for (let i = 0; i < namesToDestroy.length; i++) {
             const blockName = namesToDestroy[i];
             config.blocks[blockName].removed = true;
+            if (config.blocksInUse && config.blocksInUse.includes(blockName)) {
+                config.blocksInUse.splice(config.blocksInUse.indexOf(blockName), 1);
+            }
         }
 
         for (let i = 0; i < namesToDestroy.length; i++) {
