@@ -4,7 +4,7 @@
     ],
     "blocks": {
         "block1": {
-            "removed": false,
+            "removed": true,
             "paths": [
                 "directory/block1Directory",
                 "block1FileA.js"
@@ -21,7 +21,7 @@
             ]
         },
         "block2": {
-            "removed": false,
+            "removed": true,
             "dependencies": [
                 "greatest"
             ]

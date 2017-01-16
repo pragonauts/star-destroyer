@@ -270,9 +270,80 @@ function* replaceBlockInstances (config, blockName, replacers) {
 
 }
 
+function getRedundantBlockNames (config) {
+
+    if (!config.blocksInUse) {
+        abort('No "blocksInUse" in the destroy.config.json found.');
+    }
+
+    return Object.keys(config.blocks).filter((blockName) => {
+        const isRemoved = !!config.blocks[blockName].removed;
+        return !isRemoved && !config.blocksInUse.includes(blockName);
+    });
+}
 
 // commands
 const commands = {
+
+    /**
+     * destroy ['blockName']
+     *
+     * @param {string} [blockNameArg] - if omitted, the command will use the blocksInUse
+     *   array and remove not-present blocks
+     */
+    * destroy (blockNameArg) {
+
+        const config = getConfig();
+
+        if (blockNameArg && !(blockNameArg in config.blocks)) {
+            abort(`The destroy.config.json does not contains block with name "${blockNameArg}"`);
+        }
+
+        const namesToDestroy = blockNameArg ? [blockNameArg] : getRedundantBlockNames(config);
+        if (!namesToDestroy.length) {
+            console.log('No block to destroy');
+            return;
+        }
+
+        // mark all blocks as removed
+        for (let i = 0; i < namesToDestroy.length; i++) {
+            const blockName = namesToDestroy[i];
+            config.blocks[blockName].removed = true;
+        }
+
+        for (let i = 0; i < namesToDestroy.length; i++) {
+            const blockName = namesToDestroy[i];
+
+            // collect all non-removed blocks depending on the block
+            const dependingBlocks = Object.keys(config.blocks).filter((someOtherBlockName) => {
+                const blockConfig = config.blocks[someOtherBlockName];
+                return !blockConfig.removed
+                    && blockConfig.blockDependencies
+                    && blockConfig.blockDependencies.includes(blockName);
+            });
+
+            if (dependingBlocks.length) {
+                abort(`Cannot remove the "${blockName}" block. There are other blocks depending on it. \n Remove them first: ${dependingBlocks.join(', ')}`);
+            }
+
+            yield* replaceBlockInstances(config, blockName, {
+                inlineReplacer: (allLineMatch, indentation, restOfLine) => `${indentation}// ${restOfLine}`,
+                fileReplacer: (fullPath, parsedPath) => {
+                    if (fs.existsSync(fullPath)) {
+                        fs.renameSync(fullPath, `${parsedPath.dir}/REMOVED_${parsedPath.base}`);
+                    }
+                }
+            });
+
+            uninstallDependencies(config, blockName, false);
+        }
+
+        yield saveConfig(config);
+
+        console.log(`The blocks ["${namesToDestroy.join('", "')}"] have been successfully destroyed.`);
+        console.log('See the result and call "sd clean" to clean up the project if the result is ok.');
+    },
+
 
     * clean () {
         // delete all removed blocks from the project
@@ -304,47 +375,6 @@ const commands = {
         }
 
         yield saveConfig(config);
-    },
-
-    /**
-     * destroy 'blockName'
-     *
-     * @param {string} blockName
-     */
-    * destroy (blockName) {
-
-        const config = getConfig();
-        if (!(blockName in config.blocks)) {
-            abort(`The destroy.config.json does not contains block with name "${blockName}"`);
-        }
-
-        const dependingBlocks = Object.keys(config.blocks).filter((someOtherBlockName) => {
-            const blockConfig = config.blocks[someOtherBlockName];
-            return !blockConfig.removed
-                && blockConfig.blockDependencies
-                && blockConfig.blockDependencies.includes(blockName);
-        });
-
-        if (dependingBlocks.length) {
-            abort(`Cannot remove the "${blockName}" block. There are other blocks depending on it. \n Remove them first: ${dependingBlocks.join(', ')}`);
-        }
-
-        yield* replaceBlockInstances(config, blockName, {
-            inlineReplacer: (allLineMatch, indentation, restOfLine) => `${indentation}// ${restOfLine}`,
-            fileReplacer: (fullPath, parsedPath) => {
-                if (fs.existsSync(fullPath)) {
-                    fs.renameSync(fullPath, `${parsedPath.dir}/REMOVED_${parsedPath.base}`);
-                }
-            }
-        });
-
-        uninstallDependencies(config, blockName, false);
-
-        config.blocks[blockName].removed = true;
-        yield saveConfig(config);
-
-        console.log(`The block "${blockName}" has been successfully destroyed.`);
-        console.log('See the result and call "sd clean" to clean up the project if the result is ok.');
     }
 
 };

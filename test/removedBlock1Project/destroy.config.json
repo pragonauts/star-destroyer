@@ -1,4 +1,7 @@
 {
+    "blocksInUse": [
+        "notUtilizedBlock"
+    ],
     "blocks": {
         "block1": {
             "removed": true,

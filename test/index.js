@@ -61,7 +61,7 @@ describe('starDestroyer', function () {
 
     });
 
-    describe('(default) command "destroy BLOCKNAME"', function () {
+    describe('command "destroy BLOCKNAME"', function () {
 
 
         it('should throw when removing totally unknown block', function () {
@@ -118,6 +118,19 @@ describe('starDestroyer', function () {
             });
             const structureAfter = readFsStructure(projectPath);
             assert.deepEqual(structureAfter, structureBefore);
+        });
+
+    });
+
+    describe('command "destroy" (blocksInUse usage)', function () {
+
+        it('should destroy all blocks not present in the "blocksInUse" array', function () {
+            callDestroyer('destroy');
+
+            const resultStructure = readFsStructure(projectPath);
+            const expectedStructure = readFsStructure(`${__dirname}/removedNotInUseBlocksProject`);
+
+            assert.deepEqual(resultStructure, expectedStructure);
         });
 
     });
