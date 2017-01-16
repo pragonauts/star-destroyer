@@ -82,9 +82,9 @@ and comment all non-empty lines in the block.
     // $$BLOCK1 END
      ```
      
- 4. rename all files and folders present in the ```paths``` directory to have ```REMOVED_``` prefix
+4. rename all files and folders present in the ```paths``` directory to have ```REMOVED_``` prefix
  
- 5. uninstall all npm modules present in the ```dependencies``` and ```devDependencies``` **WITHOUT --save or --save-dev** flag.
+5. uninstall all npm modules present in the ```dependencies``` and ```devDependencies``` **WITHOUT --save or --save-dev** flag.
 
  
 ### `sd destroy` (without [BLOCKNAME])
