@@ -37,9 +37,13 @@ The SD needs destoryer.config.json in the root of the project.
 ### Config properties
 - `blocksInUse` - array of block names that should be kept in time of ```sd destroy``` call.
 - `blocks` - map of all block configuration objects
-- `blocks[BLOCKNAME].removed` - READ ONLY PROPERTY. Do not use 
-    
-
+- `blocks[BLOCKNAME].removed` - READ ONLY PROPERTY. Do not edit the property manually
+- `blocks[BLOCKNAME].paths` - array of files and folders that should be all removed in time of block removal
+- `blocks[BLOCKNAME].blockDependencies` - array of block names that are needed by the block
+- `blocks[BLOCKNAME].dependencies` - array of npm module names that are needed by the block
+- `blocks[BLOCKNAME].devDependencies` - array of npm module names that are needed by the block
+- `ignore` - array of glob string paths that should be ignored in time of searching block instances. 
+    This increase performance  
 
 ## Commands usage:
 
