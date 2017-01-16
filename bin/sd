@@ -196,7 +196,7 @@ function* replaceInFile (pathName, blockName, replacers) {
     const startCommentInlineMatcher = `//\\s*\\$\\$${blockName}\\s+BEGIN.*\\n`;
     const startCommentMatcher = `((${startCommentBlockMatcher})|(${startCommentInlineMatcher}))`;
 
-    const endCommentBlockMatcher = `/\\*\\*\\s*\\$\\$${blockName}\\s+END\\s*\\*/`;
+    const endCommentBlockMatcher = `/\\*\\*\\s*\\$\\$${blockName}\\s+END[^*]*\\*/`;
     const endCommentInlineMatcher = `//\\s*\\$\\$${blockName}\\s+END.*\\n`;
     const endCommentMatcher = `((${endCommentBlockMatcher})|(${endCommentInlineMatcher}))`;
 
