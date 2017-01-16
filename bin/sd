@@ -191,7 +191,6 @@ function* replaceInFile (pathName, blockName, replacers) {
 
     // comment lines in all block instances
     // see https://regexper.com/ (replace double backslashes for single ones)
-    // todo replace spaces and new-lines before and after the block definition???
 
     const startCommentBlockMatcher = `/\\*\\*\\s*\\$\\$${blockName}\\s*\\*/`;
     const startCommentInlineMatcher = `//\\s*\\$\\$${blockName}\\s+BEGIN.*\\n`;
