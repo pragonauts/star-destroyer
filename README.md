@@ -61,7 +61,13 @@ That means the SD will:
     will be replaced by  
     ```// var a = 10; // $$BLOCKNAME```
     
-3. search the blocks of code started with 
+3. search the ```{/* $$BLOCKNAME */}``` in line endings of JSX files and comment the lines  
+       *Example:*  
+       ```<h1>Some heading</h1> {/* $$BLOCKNAME */}```  
+       will be replaced by  
+       ```{/*<h1>Some heading</h1>*/} {/* $$BLOCKNAME */}```  
+    
+4. search the blocks of code started with 
 ```/** $$BLOCKNAME */``` or ```// $$BLOCKNAME BEGIN```
 and ending with ```/** $$BLOCKNAME END */``` or ```// $$BLOCKNAME END``` 
 and comment all non-empty lines in the block.  
@@ -82,9 +88,28 @@ and comment all non-empty lines in the block.
     // $$BLOCK1 END
      ```
      
-4. rename all files and folders present in the ```paths``` directory to have ```REMOVED_``` prefix
+5. search the blocks of code in JSX files started with
+```{/* $$BLOCKNAME */}```
+and ending with ```{/* $$BLOCKNAME END */}```
+and comment all non-empty lines in the block.
+    *Example:*
+    ```javascript
+        {/* $$BLOCK1 */}
+        <li>Some other BLOCK1 {/*Some inner comment*/} navigation item</li>
+
+        {/* $$BLOCK1 END */}
+     ```
+     will be replaced by
+     ```javascript
+         {/* $$BLOCK1 */}
+         {/*<li>Some other BLOCK1 {/*Some inner comment*!/ navigation item</li>*/}
  
-5. uninstall all npm modules present in the ```dependencies``` and ```devDependencies``` **WITHOUT --save or --save-dev** flag.
+         {/* $$BLOCK1 END */}
+      ```
+
+6. rename all files and folders present in the ```paths``` directory to have ```REMOVED_``` prefix
+ 
+7. uninstall all npm modules present in the ```dependencies``` and ```devDependencies``` **WITHOUT --save or --save-dev** flag.
 
  
 ### `sd destroy` (without [BLOCKNAME])
