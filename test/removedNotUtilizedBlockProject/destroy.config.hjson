@@ -1,0 +1,37 @@
+{
+    blocksInUse: [
+    ],
+    blocks: {
+        block1: {
+            removed: false, // this is a comment in config file
+            paths: [
+                "directory/block1Directory",
+                "block1FileA.js"
+            ],
+            blockDependencies: [
+                "block2"
+            ],
+            dependencies: [
+                "smallest",
+                "greatest"
+            ],
+            devDependencies: [
+                "individual"
+            ]
+        },
+        block2: {
+            removed: false,
+            dependencies: [
+                "greatest"
+            ]
+        },
+        notUtilizedBlock: {
+            blockDependencies: [
+            ],
+            removed: true
+        }
+    },
+    ignore: [
+        "node_modules/**"
+    ]
+}

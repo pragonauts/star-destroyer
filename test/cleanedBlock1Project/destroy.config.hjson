@@ -1,0 +1,21 @@
+{
+    blocksInUse: [
+        "notUtilizedBlock"
+    ],
+    blocks: {
+        
+        block2: {
+            removed: false,
+            dependencies: [
+                "greatest"
+            ]
+        },
+        notUtilizedBlock: {
+            blockDependencies: [
+            ]
+        }
+    },
+    ignore: [
+        "node_modules/**"
+    ]
+}

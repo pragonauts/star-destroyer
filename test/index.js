@@ -5,7 +5,6 @@ const fs = require('fs');
 const ncp = require('ncp');
 const rimraf = require('rimraf');
 const assert = require('assert');
-const deepAssign = require('deep-assign');
 
 function readFsStructure (filename) {
     const stats = fs.lstatSync(filename);
@@ -68,7 +67,7 @@ describe('starDestroyer', function () {
             assert.throws(() => {
                 callDestroyer('destroy', 'totallyUnknownBlock');
             }, (err) => {
-                assert(err.toString().includes('The destroy.config.json does not contains block with name "totallyUnknownBlock"'));
+                assert(err.toString().includes('The destroy.config.hjson does not contains block with name "totallyUnknownBlock"'));
                 return true;
             });
             const structureAfter = readFsStructure(projectPath);
@@ -78,15 +77,8 @@ describe('starDestroyer', function () {
         it('should not edit anything but config when removing not utilized block', function () {
             callDestroyer('destroy', 'notUtilizedBlock');
             const resultStructure = readFsStructure(projectPath);
-
-            // destroy.config.json should have added 'removed' -> true in notUtilizedBlock config
-            const originalConfig = JSON.parse(structureBefore['destroy.config.json']);
-            const expectedStructure = deepAssign({}, structureBefore, {
-                'destroy.config.json': JSON.stringify(deepAssign(
-                    originalConfig,
-                    { blocks: { notUtilizedBlock: { removed: true } } }
-                ), null, 4)
-            });
+            // destroy.config.hjson should have added 'removed' -> true in notUtilizedBlock config
+            const expectedStructure = readFsStructure(`${__dirname}/removedNotUtilizedBlockProject`);
 
             assert.deepEqual(resultStructure, expectedStructure);
         });

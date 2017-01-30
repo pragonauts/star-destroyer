@@ -12,6 +12,7 @@ const co = require('co');
 const path = require('path');
 const rimraf = require('rimraf');
 const { execSync } = require('child_process');
+const Hjson = require('hjson');
 
 /**
  * Option defaults.
@@ -71,15 +72,15 @@ function getConfig () {
     let config;
 
     try {
-        config = fs.readFileSync('./destroy.config.json', 'utf-8');
+        config = fs.readFileSync('./destroy.config.hjson', 'utf-8');
     } catch (err) {
-        abort('The destroy.config.json file has not been found');
+        abort('The destroy.config.hjson file has not been found');
     }
 
     try {
-        config = JSON.parse(config);
+        config = Hjson.parse(config, { keepWsc: true });
     } catch (err) {
-        abort(`Error while parsing destroy.config.json: ${err.toString()}`);
+        abort(`Error while parsing destroy.config.hjson: ${err.toString()}`);
     }
 
     return config;
@@ -117,8 +118,15 @@ function saveFile (pathName, newFileContent) {
  * @returns {Promise}
  */
 function saveConfig (config) {
-    const jsoned = JSON.stringify(config, null, 4);
-    return saveFile('./destroy.config.json', jsoned);
+    const jsoned = Hjson.stringify(config, {
+        keepWsc: true,
+        eol: '\n',
+        space: 4,
+        bracesSameLine: true,
+        quotes: 'strings',
+        separator: true
+    });
+    return saveFile('./destroy.config.hjson', jsoned);
 }
 
 /**
@@ -273,7 +281,7 @@ function* replaceBlockInstances (config, blockName, replacers) {
 function getRedundantBlockNames (config) {
 
     if (!config.blocksInUse) {
-        abort('No "blocksInUse" in the destroy.config.json found.');
+        abort('No "blocksInUse" in the destroy.config.hjson found.');
     }
 
     return Object.keys(config.blocks).filter((blockName) => {
@@ -296,7 +304,7 @@ const commands = {
         const config = getConfig();
 
         if (blockNameArg && !(blockNameArg in config.blocks)) {
-            abort(`The destroy.config.json does not contains block with name "${blockNameArg}"`);
+            abort(`The destroy.config.hjson does not contains block with name "${blockNameArg}"`);
         }
 
         const namesToDestroy = blockNameArg ? [blockNameArg] : getRedundantBlockNames(config);

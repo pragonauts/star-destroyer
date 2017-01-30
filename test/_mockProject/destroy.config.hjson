@@ -1,36 +1,37 @@
 {
-    "blocksInUse": [
+    blocksInUse: [
         "notUtilizedBlock"
     ],
-    "blocks": {
-        "block1": {
-            "removed": true,
-            "paths": [
+    blocks: {
+        block1: {
+            removed: false, // this is a comment in config file
+            paths: [
                 "directory/block1Directory",
                 "block1FileA.js"
             ],
-            "blockDependencies": [
+            blockDependencies: [
                 "block2"
             ],
-            "dependencies": [
+            dependencies: [
                 "smallest",
                 "greatest"
             ],
-            "devDependencies": [
+            devDependencies: [
                 "individual"
             ]
         },
-        "block2": {
-            "removed": true,
-            "dependencies": [
+        block2: {
+            removed: false,
+            dependencies: [
                 "greatest"
             ]
         },
-        "notUtilizedBlock": {
-            "blockDependencies": []
+        notUtilizedBlock: {
+            blockDependencies: [
+            ]
         }
     },
-    "ignore": [
+    ignore: [
         "node_modules/**"
     ]
 }
