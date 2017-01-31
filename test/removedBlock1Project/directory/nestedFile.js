@@ -24,6 +24,7 @@ module.exports = function () {
     /** $$BLOCK1 END */
 
     console.log('Some codeeee');
+    console.log('Some codeeee 2'); // $$BLOCK9
     console.log('Some codeeee');
 
     // $$BLOCK1 BEGIN
@@ -33,6 +34,12 @@ module.exports = function () {
     // console.log('HAHAHAAA');
     // console.log('HAHAHAAA');
     // $$BLOCK1 END
+
+    /** $$BLOCK9 */
+
+    console.log('HAHAHAAA 222');
+    console.log('HAHAHAAA 22');
+    /** $$BLOCK9 END */
 
     console.log('Some codeeee2');
 };

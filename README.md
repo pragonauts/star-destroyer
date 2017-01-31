@@ -3,32 +3,32 @@
 Node.js code removal utility. 
 Suitable to remove blocks of code from a large universal project.
 
-The SD needs destoryer.config.json in the root of the project.
+The SD needs destroy.config.hjson in the root of the project.
 
 
 
 ## Example of the config:
 
-```json
+```hjson
 {
-    "blocksInUse": ["block2"],
-    "blocks": {
-        "block1": {
-            "removed": false,
-            "paths": [
+    blocksInUse: ["block2"],
+    blocks: {
+        block1: {
+            removed: false,
+            paths: [
                 "directory/block1Directory",
                 "block1FileA.js"
             ],
-            "blockDependencies": ["block2"],
-            "dependencies": ["smallest", "greatest"],
-            "devDependencies": ["individual"]
+            blockDependencies: ["block2"],
+            dependencies: ["smallest", "greatest"],
+            devDependencies: ["individual"]
         },
-        "block2": {
-            "removed": false,
-            "dependencies": ["greatest"]
+        block2: {
+            removed: false,
+            dependencies: ["greatest"]
         }
     },
-    "ignore": [
+    ignore: [
         "node_modules/**"
     ]
 }
@@ -128,4 +128,6 @@ The `sd clean` is used for final project clean. The command will:
 
 3. uninstall all npm modules present in the ```dependencies``` and ```devDependencies``` **WITH --save or --save-dev** flag.
 
-4. remove all block configs previously marked as removed from the config file.
+4. find and remove comments of all kept block instances
+
+5. remove the destroy.config.hjson file

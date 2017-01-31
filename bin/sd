@@ -114,6 +114,15 @@ function saveFile (pathName, newFileContent) {
 }
 
 /**
+ * @param {string} pathName
+ */
+function deleteFile (pathName) {
+    if (fs.existsSync(pathName)) {
+        rimraf.sync(pathName, { disableGlob: true });
+    }
+}
+
+/**
  * @param {Object} config
  * @returns {Promise}
  */
@@ -193,54 +202,55 @@ function* replaceInFile (pathName, blockName, replacers) {
     // comment all inline block instances
     // see https://regexper.com/
     let newFileContent = originalFileContent.replace(
-        new RegExp(`([^\\S\\n]*)(\\S.*\\/\\/\\s*\\$\\$${blockName}.*\\n)`, 'gi'),
-        (allLineMatch, indentation, restOfLine) =>
-            replacers.inlineReplacer(allLineMatch, indentation, restOfLine)
+        new RegExp(`([^\\S\\n]*)([^\\s\\n][^\\n]*?)([^\\S\\n]*\\/\\/\\s*\\$\\$${blockName}.*)(\\n)`, 'gi'),
+        (allLineMatch, indentation, lineSubject, comment, endOfLine) =>
+            replacers.inlineReplacer(allLineMatch, indentation, lineSubject, comment, endOfLine)
     );
 
     if (isJsxFile) {
         newFileContent = newFileContent.replace(
-            new RegExp(`([^\\S\\n]*)([^\\s\\n][^\\n]*?)([^\\S\\n]*{\\s*\\/\\*\\*?\\s*\\$\\$${blockName}.*}\\n)`, 'gi'),
-            (allLineMatch, indentation, lineSubject, restOfLine) =>
-                replacers.jsxLineReplacer(allLineMatch, indentation, lineSubject, restOfLine)
+            new RegExp(`([^\\S\\n]*)([^\\s\\n][^\\n]*?)([^\\S\\n]*{\\s*\\/\\*\\*?\\s*\\$\\$${blockName}.*})(\\n)`, 'gi'),
+            (allLineMatch, indentation, lineSubject, comment, endOfLine) =>
+                replacers.jsxLineReplacer(allLineMatch, indentation, lineSubject, comment, endOfLine)
         );
     }
 
     // comment lines in all block instances
     // see https://regexper.com/ (replace double backslashes for single ones)
+    const commentOffsetMatcher = '\\n?[^\\S\\n]*';
 
-    const startCommentJSXMatcher = `{/\\*\\*?\\s*\\$\\$${blockName}\\s*\\*/}`;
+    const startCommentJSXMatcher = `{/\\*\\*?\\s*\\$\\$${blockName}(?:\\s+BEGIN)?\\s*\\*/}`;
     const startCommentBlockMatcher = `/\\*\\*?\\s*\\$\\$${blockName}\\s*\\*/`;
     const startCommentInlineMatcher = `//\\s*\\$\\$${blockName}\\s+BEGIN.*\\n`;
-    const startCommentMatcher = `((?:${startCommentJSXMatcher})|(?:${startCommentBlockMatcher})|(?:${startCommentInlineMatcher}))`;
+    const startCommentMatcher = `((?:${commentOffsetMatcher})(?:(?:${startCommentJSXMatcher})|(?:${startCommentBlockMatcher})|(?:${startCommentInlineMatcher})))`;
 
     const endCommentJSXMatcher = `{/\\*\\*?\\s*\\$\\$${blockName}\\s+END[^*]*\\*/}`;
     const endCommentBlockMatcher = `/\\*\\*?\\s*\\$\\$${blockName}\\s+END[^*]*\\*/`;
     const endCommentInlineMatcher = `//\\s*\\$\\$${blockName}\\s+END.*\\n`;
-    const endCommentMatcher = `((?:${endCommentJSXMatcher})|(?:${endCommentBlockMatcher})|(?:${endCommentInlineMatcher}))`;
+    const endCommentMatcher = `((?:${commentOffsetMatcher})(?:(?:${endCommentJSXMatcher})|(?:${endCommentBlockMatcher})|(?:${endCommentInlineMatcher})))`;
 
-    const pattern = `(\\n?[^\\S\\n]*)${startCommentMatcher}((?:(?!${startCommentMatcher}).|\\n)*?)${endCommentMatcher}`;
+    const pattern = `${startCommentMatcher}((?:(?!${startCommentMatcher}).|\\n)*?)${endCommentMatcher}`;
 
     newFileContent = newFileContent.replace(
         new RegExp(pattern, 'gi'),
-        (original, startCommentOffset, startComment, content, ignoreMe, endComment) => {
+        (original, startComment, content, ignoreMe, endComment) => {
 
             if (replacers.blockReplacer) {
-                return replacers.blockReplacer(original);
+                return replacers.blockReplacer(original, startComment, content, endComment);
             }
 
             const jsxBlock = isJsxFile && startComment.match(new RegExp(startCommentJSXMatcher, 'i'));
             const commentedContent = content.replace(
-                /([^\S\n]*)([^\s\n][^\n]*)/gi,
-                (allLineMatch, indentation, lineSubject) => {
+                /([^\S\n]*)([^\s\n][^\n]*)(\n|$)/gi,
+                (allLineMatch, indentation, lineSubject, endOfLine) => {
                     if (jsxBlock) {
-                        return replacers.jsxLineReplacer(allLineMatch, indentation, lineSubject, '');
+                        return replacers.jsxLineReplacer(allLineMatch, indentation, lineSubject, '', endOfLine);
                     }
-                    return replacers.inlineReplacer(allLineMatch, indentation, lineSubject);
+                    return replacers.inlineReplacer(allLineMatch, indentation, lineSubject, '', endOfLine);
                 }
             );
 
-            return `${startCommentOffset}${startComment}${commentedContent}${endComment}`;
+            return `${startComment}${commentedContent}${endComment}`;
         }
     );
 
@@ -252,7 +262,7 @@ function* replaceInFile (pathName, blockName, replacers) {
 /**
  * @param {Object} config
  * @param {string} blockName
- * @param {{inlineReplacer: Function, jsxLineReplacer: Function, blockReplacer?: Function, fileReplacer: Function}} replacers
+ * @param {{inlineReplacer: Function, jsxLineReplacer: Function, blockReplacer?: Function, fileReplacer?: Function}} replacers
  */
 function* replaceBlockInstances (config, blockName, replacers) {
 
@@ -265,7 +275,7 @@ function* replaceBlockInstances (config, blockName, replacers) {
 
     // search all project
     yield new Promise((resolve) => {
-        glob('**/*.+(js|jsx|scss|css|less)', globOptions, (err, filePaths) => {
+        glob('**/*.+(js|jsx|css|scss|less)', globOptions, (err, filePaths) => {
 
             if (err) {
                 abort(err);
@@ -281,7 +291,7 @@ function* replaceBlockInstances (config, blockName, replacers) {
 
     // 'remove' all files mentioned in the 'paths'
     const blockPaths = config.blocks[blockName].paths;
-    if (blockPaths) {
+    if (blockPaths && replacers.fileReplacer) {
         for (let i = blockPaths.length - 1; i >= 0; i--) {
             const pathName = blockPaths[i];
             const fullPath = `${process.cwd()}/${pathName}`;
@@ -354,10 +364,11 @@ const commands = {
             }
 
             yield* replaceBlockInstances(config, blockName, {
-                inlineReplacer: (allLineMatch, indentation, restOfLine) => `${indentation}// ${restOfLine}`,
-                jsxLineReplacer: (allLineMatch, indentation, lineSubject, restOfLine) => {
+                inlineReplacer: (allLineMatch, indentation, lineSubject, comment, endOfLine) =>
+                    `${indentation}// ${lineSubject}${comment}${endOfLine}`,
+                jsxLineReplacer: (allLineMatch, indentation, lineSubject, comment, endOfLine) => {
                     const escapedSubject = lineSubject.replace(/({\/\*.*?)\*\/}/gi, '$1*!/');
-                    return `${indentation}{/*${escapedSubject}*/}${restOfLine}`;
+                    return `${indentation}{/*${escapedSubject}*/}${comment}${endOfLine}`;
                 },
                 fileReplacer: (fullPath, parsedPath) => {
                     if (fs.existsSync(fullPath)) {
@@ -385,28 +396,34 @@ const commands = {
         for (let i = 0; i < blockNames.length; i++) {
             const blockName = blockNames[i];
             const blockConfig = config.blocks[blockName];
-            if (!blockConfig.removed) {
-                continue;
-            }
 
-            yield* replaceBlockInstances(config, blockName, {
-                inlineReplacer: () => '',
-                jsxLineReplacer: () => '',
-                blockReplacer: () => '',
-                fileReplacer: (fullPath, parsedPath) => {
-                    const fullPathToRemove = `${parsedPath.dir}/REMOVED_${parsedPath.base}`;
-                    if (fs.existsSync(fullPathToRemove)) {
-                        rimraf.sync(fullPathToRemove, { disableGlob: true });
+            if (blockConfig.removed) {
+                // remove all block instances and uninstall node_modules
+                yield* replaceBlockInstances(config, blockName, {
+                    inlineReplacer: () => '',
+                    jsxLineReplacer: () => '',
+                    blockReplacer: () => '',
+                    fileReplacer: (fullPath, parsedPath) => {
+                        const fullPathToRemove = `${parsedPath.dir}/REMOVED_${parsedPath.base}`;
+                        deleteFile(fullPathToRemove);
                     }
-                }
-            });
+                });
 
-            uninstallDependencies(config, blockName, true);
+                uninstallDependencies(config, blockName, true);
 
-            delete config.blocks[blockName];
+            } else {
+                // just remove comments
+                yield* replaceBlockInstances(config, blockName, {
+                    inlineReplacer: (allLineMatch, indentation, lineSubject, comment, endOfLine) =>
+                        `${indentation}${lineSubject}${endOfLine}`,
+                    jsxLineReplacer: (allLineMatch, indentation, lineSubject, comment, endOfLine) =>
+                        `${indentation}${lineSubject}${endOfLine}`,
+                    blockReplacer: (allBlockMatch, startComment, content) => content
+                });
+            }
         }
 
-        yield saveConfig(config);
+        deleteFile('./destroy.config.hjson');
     }
 
 };

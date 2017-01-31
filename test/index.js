@@ -130,16 +130,7 @@ describe('starDestroyer', function () {
 
     describe('command "clean"', function () {
 
-
-        it('should not do anything when cleaning cleaned project', function () {
-
-            callDestroyer('clean');
-            const resultStructure = readFsStructure(projectPath);
-
-            assert.deepEqual(resultStructure, structureBefore);
-        });
-
-        it('should clean the project from the removed blocks', function () {
+        it('should clean the project from all removed blocks and comments of not removed blocks', function () {
 
             callDestroyer('destroy', 'block1');
             callDestroyer('clean');
