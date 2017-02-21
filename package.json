@@ -1,6 +1,6 @@
 {
   "name": "star-destroyer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "code removal utility",
   "main": "bin/index.js",
   "scripts": {
